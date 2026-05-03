@@ -4,13 +4,19 @@ set nocompatible    " no compatibility with vi
 
 call plug#begin('~/.vim/bundle')
 Plug 'sheerun/vim-polyglot'
-Plug 'godlygeek/csapprox'
 Plug 'vim-scripts/Colour-Sampler-Pack'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'Raimondi/delimitMate'
-Plug 'oblitum/rainbow'
+Plug 'junegunn/rainbow_parentheses.vim'
 Plug 'scrooloose/nerdtree', { 'on':  'NERDTreeToggle' }
+Plug 'prabirshrestha/vim-lsp'
+Plug 'mattn/vim-lsp-settings'
+Plug 'prabirshrestha/asyncomplete.vim'
+Plug 'prabirshrestha/asyncomplete-lsp.vim'
+Plug 'tpope/vim-fugitive'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
 call plug#end()
 
 filetype plugin indent on
@@ -28,7 +34,6 @@ set showmatch       " show matching brackets while typing
 set noerrorbells    " don't ring the bell
 set lazyredraw      " don't redraw during macros
 set scrolloff=5     " 5 lines will always appear below the cursor
-set ttyfast         " indicate a fast term
 set hlsearch        " highlight searches
 set ignorecase      " case insensitive searching
 set smartcase       " case sensitive for uppercase
@@ -62,6 +67,8 @@ endif
 
 set hidden          " hides buffers instead of removing them
 set nobackup        " don't keep a backup file
+set nowritebackup
+set updatetime=300
 set autoread        " refreshes file constantly
 set noswapfile      " sets no swap file
 
@@ -92,11 +99,9 @@ augroup END
 syntax on           " Color files automatically.
 set cursorline      " Highlight the current line.
 
-if v:version >= 704
-    set regexpengine=1 " Old Regex Engine
-endif
-
 set number
+set termguicolors
+set signcolumn=yes
 
 set guioptions-=r  " Remove right-hand scrollbar.
 set guioptions-=L  " Remove left-hand scrollbar.
@@ -126,21 +131,7 @@ endif
 
 set background=dark
 
-if has('gui_running')
-    if strftime("%H") < 4
-        colorscheme fruity
-    else
-        colorscheme luna
-    endif
-else
-    if strftime("%H") < 12
-        colorscheme molokai
-    elseif strftime("%H") < 18
-        colorscheme fruity
-    else
-        colorscheme badwolf
-    endif
-endif
+colorscheme fruity
 
 hi SignColumn guibg=black
 
@@ -189,6 +180,9 @@ nnoremap <Leader>v :e ~/.vimrc<cr>
 " open vimrc in another split
 nnoremap <Leader>n :NERDTreeToggle<cr>
 " Toggles NerdTree
+nnoremap <Leader>gs :Git<cr>
+nnoremap <Leader>b :Buffers<cr>
+nnoremap <Leader>f :Files<cr>
 nnoremap <Leader>= m`gg=G``
 " Indent the whole file and return to original position
 
@@ -237,14 +231,6 @@ au BufRead,BufNewFile *.php set ft=php.html
 let g:delimitMate_expand_cr = 1
 let g:delimitMate_expand_space = 1
 
-" Easytags
-let g:easytags_include_members = 1
-let g:easytags_python_enabled = 1
-let g:easytags_file = '~/.vim/tags/easytags'
-let g:easytags_cmd = '/usr/local/bin/ctags'
-let g:easytags_updatetime_warn = 0
-let g:easytags_async = 1
-
 " NerdTree
 " Close Vim if only NerdTree is left
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
@@ -258,30 +244,32 @@ let g:NERDTreeCasadeOpenSingleChildDir=1
 let g:NERDTreeAutoDeleteBuffer=1
 let g:NERDTreeShowLineNumbers=1
 
-" Rainbow Parens
-let g:rainbow_active = 1
+" LSP {{{
 
-" COMPLETION {{{
+set completeopt=menu,menuone,noselect
 
-" Various
-set omnifunc=syntaxcomplete#Complete " Default Completion
-autocmd FileType html set omnifunc=htmlcomplete#CompleteTags
-autocmd FileType css set omnifunc=csscomplete#CompleteCSS
-autocmd FileType php set omnifunc=phpcomplete#CompletePHP
-autocmd FileType xml set omnifunc=xmlcomplete#CompleteTags
-autocmd FileType python set omnifunc=pythoncomplete#Complete
-autocmd FileType vim set omnifunc=syntaxcomplete#Complete
+function! s:on_lsp_buffer_enabled() abort
+    setlocal omnifunc=lsp#complete
+    nmap <buffer> gd <plug>(lsp-definition)
+    nmap <buffer> gr <plug>(lsp-references)
+    nmap <buffer> K  <plug>(lsp-hover)
+    nmap <buffer> <Leader>rn <plug>(lsp-rename)
+    nmap <buffer> [g <plug>(lsp-previous-diagnostic)
+    nmap <buffer> ]g <plug>(lsp-next-diagnostic)
+endfunction
 
-autocmd FileType ruby set omnifunc=rubycomplete#Complete
-autocmd FileType ruby,eruby let g:rubycomplete_buffer_loading = 1
-autocmd FileType ruby,eruby let g:rubycomplete_rails = 1
-autocmd FileType ruby,eruby let g:rubycomplete_classes_in_global = 1
+augroup lsp_install
+    au!
+    autocmd User lsp_buffer_enabled call s:on_lsp_buffer_enabled()
+augroup END
 
-autocmd FileType haskell set omnifunc=necoghc#omnifunc
+let g:lsp_diagnostics_echo_cursor = 1
+let g:lsp_document_highlight_enabled = 0
 
-set completeopt=menuone
+inoremap <expr> <TAB>   pumvisible() ? "\<C-n>" : "\<TAB>"
+inoremap <expr> <S-TAB> pumvisible() ? "\<C-p>" : "\<S-TAB>"
+inoremap <expr> <CR>    pumvisible() ? asyncomplete#close_popup() : "\<CR>"
 
-" Tags
-set tags+=~/.vim/tags/easytags
+" }}}
 
 " }}}
